@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Checklist Hospitalario</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-red': '#8C1033',
+                        'secondary-green': '#235C4F',
+                        'dark-green': '#0E2520',
+                        'neutral-gray': '#868688',
+                        'success': '#34A853', // Keeping for existing success states
+                        'warning': '#FBBC05', // Keeping for existing warning states
+                        'danger': '#EA4335', // Keeping for existing danger states
+                        'gray-100': '#F8F9FA',
+                        'gray-200': '#E9ECEF',
+                        'gray-300': '#DEE2E6',
+                        'gray-400': '#CED4DA',
+                        'gray-500': '#ADB5BD',
+                        'gray-600': '#6C757D',
+                        'gray-700': '#495057',
+                        'gray-800': '#343A40',
+                        'gray-900': '#212529',
+                    },
+                    fontFamily: {
+                        roboto: ['Roboto', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Base styles that are hard to do with pure Tailwind or are resets */
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: theme('colors.gray-800'); /* Use theme() for consistency */
+            background-color: theme('colors.gray-100');
+        }
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="font-roboto bg-gray-100 text-gray-800">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-4 mt-4">
+                {% for category, message in messages %}
+                    <div class="p-3 mb-4 rounded-md border-l-4
+                        {% if category == 'success' %}
+                            bg-green-100 text-success border-success
+                        {% else %}
+                            bg-red-100 text-danger border-danger
+                        {% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+    
+    <footer class="w-full py-4 text-center text-gray-600 text-sm">
+        <p>&copy; 2025 Sistema de Checklist Hospitalario. Todos los derechos reservados.</p>
+    </footer>
+</body>
+</html>

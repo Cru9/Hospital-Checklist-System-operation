@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-5">
+        <div class="flex justify-between items-center border-b pb-3 mb-4 border-gray-200">
+            <h1 class="text-2xl font-medium text-gray-800">Checklist Diario - {{ hospital_name }}</h1>
+            <a href="{{ url_for('logout') }}" class="bg-primary-red hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">Cerrar Sesión</a>
+        </div>
+
+        <p class="text-lg mb-5">Fecha: {{ today }}</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="border-b pb-3 mb-4 border-gray-200">
+                <h2 class="text-xl font-medium text-gray-800">Porcentaje de Cumplimiento de la Unidad</h2>
+            </div>
+            <p class="text-5xl font-medium text-secondary-green">{{ unit_percentage | round(1) }}%</p>
+        </div>
+
+        <form method="POST">
+            {% for category, items in checklist_items.items() %}
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="border-b pb-3 mb-4 border-gray-200">
+                    <h2 class="text-xl font-medium text-gray-800">{{ category }}</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for item in items %}
+                    <label class="flex items-center cursor-pointer text-gray-700 p-2 rounded-md transition-colors duration-200
+                        {% if checklist_data[item] %}bg-green-100{% else %}bg-red-100{% endif %}"
+                        data-checkbox-label> {# Added data attribute for easy selection #}
+                        <input type="checkbox" class="form-checkbox h-5 w-5 text-secondary-green rounded focus:ring-secondary-green mr-2" name="{{ item }}" {% if checklist_data[item] %}checked{% endif %}>
+                        {{ item|capitalize }}
+                    </label>
+                    {% endfor %}
+                    <label class="flex items-center cursor-pointer text-gray-700 p-2 rounded-md transition-colors duration-200
+                        {% if checklist_data[category + '_otro_checkbox'] %}bg-green-100{% else %}bg-red-100{% endif %}"
+                        data-checkbox-label> {# Added data attribute for easy selection #}
+                        <input type="checkbox" class="form-checkbox h-5 w-5 text-secondary-green rounded focus:ring-secondary-green mr-2" name="{{ category }}_otro_checkbox" id="{{ category }}_otro_checkbox" {% if checklist_data[category + '_otro_checkbox'] %}checked{% endif %}>
+                        Otro
+                    </label>
+                    <textarea name="{{ category }}_otro_text" id="{{ category }}_otro_text" class="w-full p-3 border border-gray-300 rounded-md text-base focus:border-secondary-green focus:ring-2 focus:ring-secondary-green/20 transition duration-300" rows="2" placeholder="Especifique otro..." style="{% if not checklist_data[category + '_otro_checkbox'] %}display: none;{% endif %}">{{ checklist_data[category + '_otro_text'] if checklist_data[category + '_otro_text'] else '' }}</textarea>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="border-b pb-3 mb-4 border-gray-200">
+                    <h2 class="text-xl font-medium text-gray-800">Observaciones</h2>
+                </div>
+                <textarea name="observations" class="w-full p-3 border border-gray-300 rounded-md text-base focus:border-secondary-green focus:ring-2 focus:ring-secondary-green/20 transition duration-300" rows="5" placeholder="Escriba aquí cualquier observación adicional...">{{ observations }}</textarea>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="border-b pb-3 mb-4 border-gray-200">
+                    <h2 class="text-xl font-medium text-gray-800">Cumplimiento de Meta</h2>
+                </div>
+                <div class="flex gap-5">
+                    <label class="flex items-center cursor-pointer text-gray-700">
+                        <input type="radio" class="form-radio h-5 w-5 text-secondary-green rounded-full focus:ring-secondary-green mr-2" name="met_goal" value="true" id="met_goal_true" {% if met_goal == True %}checked{% endif %}>
+                        Sí se cumplió
+                    </label>
+                    <label class="flex items-center cursor-pointer text-gray-700">
+                        <input type="radio" class="form-radio h-5 w-5 text-secondary-green rounded-full focus:ring-secondary-green mr-2" name="met_goal" value="false" id="met_goal_false" {% if met_goal == False %}checked{% endif %}>
+                        No se cumplió
+                    </label>
+                </div>
+                <div id="operations_input_container" class="mt-4" style="{% if met_goal != False %}display: none;{% endif %}">
+                    <label class="block text-gray-700 font-medium mb-2" for="operations_performed">Número de Operaciones Realizadas (Máx. 7 si la meta no se cumplió):</label>
+                    <input type="number" id="operations_performed" name="operations_performed" class="w-full p-3 border border-gray-300 rounded-md text-base focus:border-secondary-green focus:ring-2 focus:ring-secondary-green/20 transition duration-300" min="0" max="7" value="{{ operations_performed if operations_performed is not none else '' }}">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-secondary-green hover:bg-dark-green text-white text-xl font-medium rounded-md transition duration-300 mt-5">
+                Enviar Reporte
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // JavaScript for "Otro" text area visibility
+        const categories = {{ checklist_items | tojson }};
+        for (const category in categories) {
+            const checkbox = document.getElementById(`${category}_otro_checkbox`);
+            const textarea = document.getElementById(`${category}_otro_text`);
+            if (checkbox && textarea) {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        textarea.style.display = 'block';
+                    } else {
+                        textarea.style.display = 'none';
+                        textarea.value = ''; // Clear text if unchecked
+                    }
+                });
+            }
+        }
+
+        // JavaScript for "Met Goal" operations input visibility
+        const metGoalTrue = document.getElementById('met_goal_true');
+        const metGoalFalse = document.getElementById('met_goal_false');
+        const operationsInputContainer = document.getElementById('operations_input_container');
+        const operationsPerformed = document.getElementById('operations_performed');
+
+        function toggleOperationsInput() {
+            if (metGoalFalse.checked) {
+                operationsInputContainer.style.display = 'block';
+            } else {
+                operationsInputContainer.style.display = 'none';
+                operationsPerformed.value = ''; // Clear value if hidden
+            }
+        }
+
+        if (metGoalTrue) metGoalTrue.addEventListener('change', toggleOperationsInput);
+        if (metGoalFalse) metGoalFalse.addEventListener('change', toggleOperationsInput);
+
+        // Initial check on page load
+        toggleOperationsInput();
+
+
+        // New: Visual Feedback for Checkbox Selection
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            const label = checkbox.closest('label[data-checkbox-label]'); // Find the parent label with the data attribute
+
+            // Set initial background based on current state
+            if (label) {
+                if (checkbox.checked) {
+                    label.classList.add('bg-green-100');
+                    label.classList.remove('bg-red-100');
+                } else {
+                    label.classList.add('bg-red-100');
+                    label.classList.remove('bg-green-100');
+                }
+            }
+
+            checkbox.addEventListener('change', function() {
+                if (label) {
+                    if (this.checked) {
+                        label.classList.add('bg-green-100');
+                        label.classList.remove('bg-red-100');
+                    } else {
+                        label.classList.add('bg-red-100');
+                        label.classList.remove('bg-green-100');
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

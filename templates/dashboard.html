@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-5">
+        <div class="flex justify-between items-center border-b pb-3 mb-4 border-gray-200">
+            <h1 class="text-2xl font-medium text-gray-800">Dashboard Principal de Monitoreo</h1>
+            <div class="flex space-x-4"> {# Added a div to group buttons #}
+                <a href="{{ url_for('statistics') }}" class="bg-secondary-green hover:bg-dark-green text-white font-medium py-2 px-4 rounded-md transition duration-300">Estadísticas</a>
+                <a href="{{ url_for('hospital_trends') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">Tendencias por Hospital</a>
+                <a href="{{ url_for('logout') }}" class="bg-primary-red hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">Cerrar Sesión</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg text-gray-600 mb-3">Operaciones por Quincena</h3>
+                <p class="text-5xl font-medium text-secondary-green">{{ operations_fortnight }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg text-gray-600 mb-3">Operaciones por Semana</h3>
+                <p class="text-5xl font-medium text-secondary-green">{{ operations_week }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg text-gray-600 mb-3">Operaciones Diarias por Hospital</h3>
+                <p class="text-5xl font-medium text-secondary-green">{{ operations_day }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 col-span-1 lg:col-span-1">
+                <h3 class="text-lg text-gray-600 mb-3">Operaciones Acumuladas por Hospital (Quincena)</h3>
+                <div class="space-y-2">
+                    {% for hospital_id, data in hospital_fortnight_operations.items() %}
+                        <p class="text-md font-medium text-gray-800">
+                            {{ data.name }}: <span class="text-secondary-green">{{ data.total_operations }}</span>
+                        </p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center">
+                <div class="w-16 h-16 rounded-full flex items-center justify-center mr-4 text-white font-bold text-xl
+                    {% if progress_status == 'green' %} bg-success
+                    {% elif progress_status == 'yellow' %} bg-warning
+                    {% elif progress_status == 'red' %} bg-danger
+                    {% endif %}">
+                    {{ progress_percentage }}%
+                </div>
+                <div>
+                    <h2 class="text-xl font-medium text-gray-800">Progreso Diario de Reportes ({{ today }})</h2>
+                    <p class="text-gray-600">Reportes Completados: {{ completed_reports }} / {{ total_hospitals }}</p>
+                </div>
+            </div>
+        </div>
+
+        {# NEW SECTION: Hospital Daily Compliance Status #}
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="border-b pb-3 mb-4 border-gray-200">
+                <h2 class="text-xl font-medium text-gray-800">Estado Diario de Hospitales</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {% for hospital_id, name in hospital_names.items() %}
+                    {% set report_found = hospital_id in hospital_daily_status and hospital_daily_status[hospital_id] %}
+                    {% set status_class = 'bg-danger' %} {# Default to red (not reported) #}
+                    {% if report_found %}
+                        {% if hospital_daily_status[hospital_id].met_goal == 1 %}
+                            {% set status_class = 'bg-success' %} {# Green if goal met #}
+                        {% elif hospital_daily_status[hospital_id].met_goal == 0 %}
+                            {% set status_class = 'bg-warning' %} {# Yellow if not met but reported #}
+                        {% endif %}
+                    {% endif %}
+                    <div class="flex flex-col items-center p-3 border rounded-lg shadow-sm">
+                        {# Replace with actual image paths, or use a placeholder #}
+                        <img src="{{ url_for('static', filename='hospital.png') }}" alt="{{ name }}" class="w-20 h-20 object-contain mb-2 rounded-full border-2 {{ status_class }}">
+                        <p class="text-center font-medium text-gray-700">{{ name }}</p>
+                        <div class="w-4 h-4 rounded-full mt-2 {{ status_class }}"></div> {# Small colored circle #}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {# END NEW SECTION #}
+
+        {% if missing_reports %}
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="border-b pb-3 mb-4 border-gray-200">
+                <h2 class="text-xl font-medium text-gray-800">Notas de Reportes Faltantes</h2>
+            </div>
+            <ul class="list-disc pl-5 text-danger">
+                {% for report in missing_reports %}
+                <li class="mb-2">{{ report }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {# NEW INTERACTIVE SECTION: Executive Summary of Checklists #}
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="border-b pb-3 mb-4 border-gray-200">
+                <h2 class="text-xl font-medium text-gray-800">Resumen Ejecutivo de Checklists</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for hospital_id, name in hospital_names.items() %}
+                    {% set report = hospital_reports[hospital_id] %}
+                    <div class="border rounded-lg shadow-sm p-4" x-data="{ open: false }">
+                        <div class="flex justify-between items-center cursor-pointer" @click="open = !open">
+                            <h3 class="text-lg font-medium text-gray-800">{{ name }}</h3>
+                            <span x-text="open ? '&#9660;' : '&#9658;'" class="text-gray-600"></span> {# Chevron icon #}
+                        </div>
+                        <div class="mt-2 text-gray-700">
+                            <p><strong>Último Reporte:</strong> {{ report['date'] }}</p>
+                            <p>
+                                <strong>Meta Cumplida:</strong>
+                                {% if report['met_goal'] == True %}
+                                    <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-success">Sí</span>
+                                {% elif report['met_goal'] == False %}
+                                    <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-danger">No</span>
+                                {% else %}
+                                    <span class="inline-block px-2 py-1 text-xs font-medium rounded-full bg-neutral-gray/20 text-neutral-gray">N/A</span>
+                                {% endif %}
+                            </p>
+                            <p>
+                                <strong>Operaciones Realizadas:</strong>
+                                {% if report['met_goal'] == True %}
+                                    {{ operations_day }} {# If goal met, assume OPERATIONS_PER_DAY #}
+                                {% elif report['operations_performed'] is not none %}
+                                    {{ report['operations_performed'] }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                            <p><strong>% Unidad:</strong> {{ report['unit_percentage'] | round(1) }}%</p>
+                        </div>
+
+                        {# Collapsible details section #}
+<div x-show="open" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform -translate-y-2" x-transition:enter-end="opacity-100 transform translate-y-0"
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform translate-y-0" x-transition:leave-end="opacity-0 transform -translate-y-2"
+    class="mt-4 pt-4 border-t border-gray-200">
+    <h4 class="text-md font-medium text-gray-700 mb-2">Detalles del Checklist:</h4>
+    {% if report['checklist_data'] %}
+        <ul class="list-disc pl-5 text-sm">
+            {% for category, items in checklist_items_structure.items() %}
+                <p class="font-semibold mt-2">{{ category | capitalize }}:</p>
+                {% for item in items %}
+                    {% set checked = report['checklist_data'].get(item, false) %}
+                    <li class="{% if checked %}text-success{% else %}text-danger{% endif %} mb-1">
+                        {{ item|capitalize }}: {% if checked %}Sí{% else %}No{% endif %}
+                    </li>
+                {% endfor %}
+                
+                {# Verificación para elementos "Otro" #}
+                {% set otro_checkbox_name = category + '_otro_checkbox' %}
+                {% set otro_text_name = category + '_otro_text' %}
+                {% set otro_checked = report['checklist_data'].get(otro_checkbox_name, false) %}
+                {% set otro_text = report['checklist_data'].get(otro_text_name, '') | trim %}
+                
+                {# Solo mostrar si hay texto en el campo "Otro" #}
+                {% if otro_text %}
+                    <li class="{% if otro_checked %}text-success{% else %}text-danger{% endif %} mb-1">
+                        Otro ({{ category }}): {% if otro_checked %}Sí{% else %}No{% endif %} - {{ otro_text }}
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>N/A</p>
+    {% endif %}
+    <h4 class="text-md font-medium text-gray-700 mt-4 mb-2">Observaciones:</h4>
+    <p class="text-gray-600">{{ report['observations'] if report['observations'] else 'Sin observaciones' }}</p>
+</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {# END NEW INTERACTIVE SECTION #}
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+{% endblock %}
